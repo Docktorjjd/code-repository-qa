@@ -1,3 +1,9 @@
+// Code Repository Q&A System - Frontend
+// Copyright (c) 2025 James [Your Last Name]
+// Licensed under the MIT License
+
+import React from 'react';
+// ... rest of your code
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Send, Trash2, Code2, FileCode, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
@@ -13,6 +19,14 @@ export default function CodeQAApp() {
   const [uploadStatus, setUploadStatus] = useState(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  
+  // NEW: Multi-file context state
+  const [files, setFiles] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [showFileSelector, setShowFileSelector] = useState(false);
+  // NEW: Metrics dashboard state
+  const [metrics, setMetrics] = useState(null);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   // Load repositories on mount
   useEffect(() => {
@@ -23,7 +37,53 @@ export default function CodeQAApp() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  // Load repositories on mount
+  useEffect(() => {
+    fetchRepositories();
+  }, []);
 
+  // Auto-scroll to bottom of messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Fetch files when repo changes
+  useEffect(() => {
+    if (currentRepoId) {
+      fetchFiles(currentRepoId);
+    }
+  }, [currentRepoId]);
+
+  // Fetch files when repo changes
+  useEffect(() => {
+    if (currentRepoId) {
+      fetchFiles(currentRepoId);
+    }
+  }, [currentRepoId]);
+
+  const fetchMetrics = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/metrics`);
+      const data = await response.json();
+      setMetrics(data);
+    } catch (error) {
+      console.error('Error fetching metrics:', error);
+    }
+  };
+
+  const rateQuery = async (queryId, rating) => {
+    try {
+      await fetch(`${API_BASE}/queries/${queryId}/rate?rating=${rating}`, {
+        method: 'POST',
+      });
+      // Refresh metrics after rating
+      fetchMetrics();
+    } catch (error) {
+      console.error('Error rating query:', error);
+    }
+  };
+
+  
   const fetchRepositories = async () => {
     try {
       const response = await fetch(`${API_BASE}/repos`);
@@ -36,6 +96,18 @@ export default function CodeQAApp() {
       }
     } catch (error) {
       console.error('Error fetching repos:', error);
+    }
+  };
+
+
+  const fetchFiles = async (repoId) => {
+    try {
+      const response = await fetch(`${API_BASE}/repos/${repoId}/files`);
+      const data = await response.json();
+      setFiles(data.files || []);
+    } catch (error) {
+      console.error('Error fetching files:', error);
+      setFiles([]);
     }
   };
 
@@ -107,6 +179,7 @@ export default function CodeQAApp() {
           question: inputValue,
           repo_id: currentRepoId,
           top_k: 5,
+          selected_files: selectedFiles.length > 0 ? selectedFiles : null,
         }),
       });
 
@@ -121,6 +194,8 @@ export default function CodeQAApp() {
         content: data.answer,
         sources: data.sources,
         tokensUsed: data.tokens_used,
+        query_id: data.query_id, 
+        validation_preview: data.validation_preview, 
         timestamp: new Date().toISOString(),
       };
 
@@ -178,44 +253,57 @@ export default function CodeQAApp() {
 
         {/* Upload Section */}
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 mb-6 border border-slate-700">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg transition-colors"
-            >
-              {isUploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Upload className="w-4 h-4" />
-              )}
-              {isUploading ? 'Uploading...' : 'Upload Repository (.zip)'}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".zip"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            
-            {repos.length > 0 && (
-              <select
-                value={currentRepoId || ''}
-                onChange={(e) => {
-                  setCurrentRepoId(e.target.value);
-                  setMessages([]);
-                }}
-                className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
-                <option value="">Select Repository</option>
-                {repos.map(repo => (
-                  <option key={repo.repo_id} value={repo.repo_id}>
-                    {repo.name} ({repo.document_count} chunks)
-                  </option>
-                ))}
-              </select>
-            )}
+                {isUploading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4" />
+                )}
+                {isUploading ? 'Uploading...' : 'Upload Repository (.zip)'}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".zip"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              
+              {repos.length > 0 && (
+                <select
+                  value={currentRepoId || ''}
+                  onChange={(e) => {
+                    setCurrentRepoId(e.target.value);
+                    setMessages([]);
+                  }}
+                  className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Repository</option>
+                  {repos.map(repo => (
+                    <option key={repo.repo_id} value={repo.repo_id}>
+                      {repo.name} ({repo.document_count} chunks)
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            
+            {/* Dashboard button */}
+            <button
+              onClick={() => {
+                setShowDashboard(!showDashboard);
+                if (!showDashboard) fetchMetrics();
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+            >
+              📊 {showDashboard ? 'Hide' : 'Show'} Dashboard
+            </button>
           </div>
 
           {/* Upload Status */}
@@ -232,6 +320,93 @@ export default function CodeQAApp() {
             </div>
           )}
         </div>
+        
+        {/* Dashboard */}
+        {showDashboard && metrics && (
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-6 mb-6 border border-slate-700">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              📊 Evaluation Metrics Dashboard
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              {/* Stat Cards */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="text-slate-400 text-sm mb-1">Total Queries</div>
+                <div className="text-2xl font-bold text-blue-400">
+                  {metrics.overall.total_queries || 0}
+                </div>
+              </div>
+              
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="text-slate-400 text-sm mb-1">Avg Response Time</div>
+                <div className="text-2xl font-bold text-green-400">
+                  {metrics.overall.avg_response_time ? 
+                    `${metrics.overall.avg_response_time.toFixed(2)}s` : 'N/A'}
+                </div>
+              </div>
+              
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="text-slate-400 text-sm mb-1">Avg Tokens</div>
+                <div className="text-2xl font-bold text-purple-400">
+                  {metrics.overall.avg_tokens ? 
+                    Math.round(metrics.overall.avg_tokens) : 0}
+                </div>
+              </div>
+              
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="text-slate-400 text-sm mb-1">Positive Ratings</div>
+                <div className="text-2xl font-bold text-emerald-400">
+                  {metrics.ratings.positive || 0} 👍 / {metrics.ratings.negative || 0} 👎
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Most Accessed Files */}
+              <div className="bg-slate-700/30 rounded-lg p-4">
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <FileCode className="w-5 h-5" />
+                  Most Queried Files
+                </h3>
+                <div className="space-y-2">
+                  {metrics.popular_files.length === 0 ? (
+                    <p className="text-slate-400 text-sm">No data yet</p>
+                  ) : (
+                    metrics.popular_files.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-sm">
+                        <span className="text-slate-300 truncate font-mono">
+                          {file.file_path}
+                        </span>
+                        <span className="text-blue-400 font-semibold ml-2">
+                          {file.access_count}x
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              
+              {/* Recent Queries */}
+              <div className="bg-slate-700/30 rounded-lg p-4">
+                <h3 className="text-lg font-semibold mb-3">Recent Queries</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {metrics.recent_queries.length === 0 ? (
+                    <p className="text-slate-400 text-sm">No queries yet</p>
+                  ) : (
+                    metrics.recent_queries.map((query, idx) => (
+                      <div key={idx} className="text-sm border-l-2 border-blue-500 pl-3 py-1">
+                        <p className="text-slate-300 line-clamp-2">{query.question}</p>
+                        <p className="text-slate-500 text-xs mt-1">
+                          {query.response_time.toFixed(2)}s • {query.tokens_used} tokens
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Repository List */}
         {repos.length > 0 && (
@@ -278,11 +453,11 @@ export default function CodeQAApp() {
                   <p>Ask a question about your code repository</p>
                   <p className="text-sm mt-2">Try: "What does the main function do?" or "How is authentication handled?"</p>
                 </div>
-              ) : (
-                messages.map((msg, idx) => (
-                  <Message key={idx} message={msg} />
-                ))
-              )}
+) : (
+  messages.map((msg, idx) => (
+    <Message key={idx} message={msg} rateQuery={rateQuery} />
+  ))
+)}
               {isQuerying && (
                 <div className="flex items-center gap-2 text-slate-400">
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -291,7 +466,63 @@ export default function CodeQAApp() {
               )}
               <div ref={messagesEndRef} />
             </div>
+{/* File Selector */}
+<div className="border-t border-slate-700 p-4 bg-slate-900/50">
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => setShowFileSelector(!showFileSelector)}
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition-colors"
+                >
+                  <FileCode className="w-4 h-4" />
+                  <span>Select Files ({selectedFiles.length}/{files.length})</span>
+                </button>
+                
+                {selectedFiles.length > 0 && (
+                  <button
+                    onClick={() => setSelectedFiles([])}
+                    className="text-sm text-slate-400 hover:text-slate-300"
+                  >
+                    Clear Selection
+                  </button>
+                )}
+              </div>
 
+              {showFileSelector && (
+                <div className="mt-3 max-h-60 overflow-y-auto bg-slate-800/50 rounded-lg p-3 space-y-2">
+                  {files.length === 0 ? (
+                    <p className="text-slate-400 text-sm">No files available. Upload a repository first.</p>
+                  ) : (
+                    files.map((file) => (
+                      <label
+                        key={file.file_path}
+                        className="flex items-start gap-3 p-2 hover:bg-slate-700/50 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedFiles.includes(file.file_path)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedFiles([...selectedFiles, file.file_path]);
+                            } else {
+                              setSelectedFiles(selectedFiles.filter(f => f !== file.file_path));
+                            }
+                          }}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-slate-200 font-mono truncate">{file.file_path}</p>
+                          <p className="text-xs text-slate-500">
+                            {file.language} • {file.chunk_count} chunks • {file.total_lines} lines
+                          </p>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Input */}
             {/* Input */}
             <div className="border-t border-slate-700 p-4">
               <div className="flex gap-2">
@@ -326,8 +557,16 @@ export default function CodeQAApp() {
   );
 }
 
-function Message({ message }) {
+function Message({ message, rateQuery }) {
   const isUser = message.role === 'user';
+  const [hasRated, setHasRated] = useState(false);
+  
+  const handleRate = async (rating) => {
+    if (message.query_id && !hasRated) {
+      await rateQuery(message.query_id, rating);
+      setHasRated(true);
+    }
+  };
   
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -343,33 +582,87 @@ function Message({ message }) {
           </span>
         </div>
         
-        <div className="prose prose-invert prose-sm max-w-none">
-          <div className="whitespace-pre-wrap">{message.content}</div>
+        <div className="text-slate-200 whitespace-pre-wrap">
+          {message.content}
         </div>
-
-        {/* Sources */}
-        {message.sources && message.sources.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <div className="text-xs font-semibold text-slate-400">Sources:</div>
-            {message.sources.map((source, idx) => (
-              <div key={idx} className="bg-slate-900/50 rounded p-3 text-sm">
-                <div className="flex items-center gap-2 mb-1">
-                  <FileCode className="w-3 h-3 text-blue-400" />
-                  <span className="font-mono text-xs text-blue-400">{source.file_path}</span>
-                  <span className="text-xs text-slate-500">Lines {source.start_line}-{source.end_line}</span>
-                </div>
-                <pre className="text-xs text-slate-300 overflow-x-auto mt-2">
-                  <code>{source.snippet}</code>
-                </pre>
+        
+        {/* Validation Preview */}
+        {!isUser && message.validation_preview && (
+          <div className="mt-4 p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+            <div className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+              🔬 Multi-Model Validation
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Confidence:</span>
+                <span className={`font-semibold ${
+                  message.validation_preview.confidence_level === 'HIGH' ? 'text-green-400' :
+                  message.validation_preview.confidence_level === 'MEDIUM' ? 'text-yellow-400' :
+                  'text-red-400'
+                }`}>
+                  {(message.validation_preview.confidence_score * 100).toFixed(0)}% 
+                  ({message.validation_preview.confidence_level})
+                </span>
               </div>
-            ))}
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Models Agree:</span>
+                <span className="text-slate-300 font-mono">
+                  {message.validation_preview.models_agree}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {Object.entries(message.validation_preview.model_agreements).map(([model, agrees]) => (
+                  <div key={model} className="flex items-center gap-1 text-xs">
+                    <span className={agrees ? 'text-green-400' : 'text-red-400'}>
+                      {agrees ? '✓' : '✗'}
+                    </span>
+                    <span className="text-slate-400">{model}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-2 border-t border-slate-700">
+                <span className={`text-xs font-semibold ${
+                  message.validation_preview.recommendation === 'APPLY' ? 'text-green-400' :
+                  message.validation_preview.recommendation === 'REVIEW' ? 'text-yellow-400' :
+                  'text-red-400'
+                }`}>
+                  {message.validation_preview.recommendation === 'APPLY' ? '✅ READY TO APPLY' :
+                   message.validation_preview.recommendation === 'REVIEW' ? '⚠️ NEEDS REVIEW' :
+                   '❌ NOT RECOMMENDED'}
+                </span>
+              </div>
+              <div className="text-xs text-slate-500 italic mt-2">
+                {message.validation_preview.note}
+              </div>
+            </div>
           </div>
         )}
-
-        {/* Token usage */}
-        {message.tokensUsed && (
-          <div className="mt-2 text-xs text-slate-500">
-            {message.tokensUsed.toLocaleString()} tokens used
+        
+        {/* Rating buttons */}
+        {!isUser && message.query_id && (
+          <div className="mt-3 pt-3 border-t border-slate-600 flex items-center gap-2">
+            <span className="text-xs text-slate-400">Was this helpful?</span>
+            <button
+              onClick={() => handleRate(1)}
+              disabled={hasRated}
+              className={`p-1 rounded hover:bg-slate-600 transition-colors ${
+                hasRated ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              title="Thumbs up"
+            >
+              👍
+            </button>
+            <button
+              onClick={() => handleRate(-1)}
+              disabled={hasRated}
+              className={`p-1 rounded hover:bg-slate-600 transition-colors ${
+                hasRated ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              title="Thumbs down"
+            >
+              👎
+            </button>
+            {hasRated && <span className="text-xs text-green-400 ml-2">Thanks for your feedback!</span>}
           </div>
         )}
       </div>

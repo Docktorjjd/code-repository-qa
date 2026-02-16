@@ -1,0 +1,36 @@
+## License
+
+Copyright (c) 2025 James [Your Last Name]. All rights reserved.
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+```
+
+---
+
+### **2. Choose Your License Strategy**
+
+You have a few options depending on how protective you want to be:
+
+#### **Option A: MIT License (Most Common for Portfolio)**
+**Pros:**
+- Shows you're open to collaboration
+- Good for portfolio/interview purposes
+- Employers see you're not overly protective
+- Still protects your authorship
+
+**Cons:**
+- Anyone can use your code (even commercially)
+- Can't prevent copying
+
+**Best for:** Demonstrating skills, getting hired
+
+---
+
+#### **Option B: All Rights Reserved (Most Restrictive)**
+**License text:**
+```
+Copyright (c) 2025 James [Your Last Name]. All Rights Reserved.
+
+This code is proprietary and confidential. Unauthorized copying, distribution, 
+or use of this software, via any medium, is strictly prohibited without 
+explicit written permission from the copyright holder.
