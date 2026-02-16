@@ -1,3 +1,12 @@
+# Code Repository Q&A System
+# Copyright (c) 2025 James [Your Last Name]
+# Licensed under the MIT License
+# See LICENSE file in the project root for full license text
+
+"""
+Main application module for Code Repository Q&A System.
+Provides FastAPI endpoints for semantic code search using RAG architecture.
+"""
 import os
 import zipfile
 import tempfile
