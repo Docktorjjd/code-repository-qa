@@ -36,7 +36,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # Local development
-        "https://code-repository-qa.vercel.app"  # Production frontend
+        "https://code-repository-qa.vercel.app",  # Production domain
+        "https://code-repository-1b1010mux-james-docktors-projects.vercel.app"  # Vercel deployment URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
