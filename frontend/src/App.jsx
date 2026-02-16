@@ -2,7 +2,6 @@
 // Copyright (c) 2025 James [Your Last Name]
 // Licensed under the MIT License
 
-import React from 'react';
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Send, Trash2, Code2, FileCode, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
