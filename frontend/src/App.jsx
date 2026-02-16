@@ -3,11 +3,10 @@
 // Licensed under the MIT License
 
 import React from 'react';
-// ... rest of your code
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Send, Trash2, Code2, FileCode, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function CodeQAApp() {
   const [repos, setRepos] = useState([]);
