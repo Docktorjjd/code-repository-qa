@@ -34,12 +34,8 @@ app = FastAPI(title="Code Repository Q&A API")
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Local development
-        "https://code-repository-qa.vercel.app",  # Production domain
-        "https://code-repository-qa-zl72-4f1x41xqs-james-docktors-projects.vercel.app" # Vercel deployment URL
-    ],
-    
+allow_origins=["*"],# Vercel deployment URL
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
