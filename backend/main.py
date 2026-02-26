@@ -41,7 +41,9 @@ app.add_middleware(
 )
 
 # Initialize ChromaDB client (persistent storage)
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
+import os
+CHROMA_PATH = os.environ.get("CHROMA_DB_PATH", "./chroma_db")
+chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
 
 
 # Initialize Anthropic client with explicit http_client to avoid proxies issue
