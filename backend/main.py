@@ -37,8 +37,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # Local development
         "https://code-repository-qa.vercel.app",  # Production domain
-        "https://code-repository-1b1010mux-james-docktors-projects.vercel.app"  # Vercel deployment URL
+        "https://code-repository-qa-zl72-4f1x41xqs-james-docktors-projects.vercel.app" # Vercel deployment URL
     ],
+    
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
