@@ -59,7 +59,7 @@ async def call_llm_evaluator(original_code: str, improved_code: str, explanation
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "http://localhost:8002/validate",
+                "https://llm-evaluation-framework.onrender.com/validate",
                 json={
                     "file_path": "code.py",
                     "original_code": original_code,
