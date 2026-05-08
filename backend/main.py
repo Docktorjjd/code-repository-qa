@@ -442,73 +442,36 @@ Instructions:
         ]
         
 # Calculate response time
-        response_time = time.time() - start_time
-        
-        # Save metrics to database
-        conn = sqlite3.connect('metrics.db')
-        c = conn.cursor()
-        
-        # Insert query metrics
-        c.execute('''
-            INSERT INTO query_metrics (repo_id, question, response_time, tokens_used, files_queried)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (
-            request.repo_id,
-            request.question,
-            response_time,
-            tokens_used,
-            json.dumps(request.selected_files) if request.selected_files else None
-        ))
-        
-        query_id = c.lastrowid
-        
-        # Track file access
-        if request.selected_files:
-            for file_path in request.selected_files:
-                c.execute('''
-                    INSERT INTO file_access (repo_id, file_path, access_count, last_accessed)
-                    VALUES (?, ?, 1, CURRENT_TIMESTAMP)
-                    ON CONFLICT(repo_id, file_path) DO UPDATE SET
-                        access_count = access_count + 1,
-                        last_accessed = CURRENT_TIMESTAMP
-                ''', (request.repo_id, file_path))
-        
-        conn.commit()
-        conn.close()
-        # Calculate response time
-        response_time = time.time() - start_time
-        
-        # Save metrics to database
-        conn = sqlite3.connect('metrics.db')
-        c = conn.cursor()
-        
-        # Insert query metrics
-        c.execute('''
-            INSERT INTO query_metrics (repo_id, question, response_time, tokens_used, files_queried)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (
-            request.repo_id,
-            request.question,
-            response_time,
-            tokens_used,
-            json.dumps(request.selected_files) if request.selected_files else None
-        ))
-        
-        query_id = c.lastrowid
-        
-        # Track file access
-        if request.selected_files:
-            for file_path in request.selected_files:
-                c.execute('''
-                    INSERT INTO file_access (repo_id, file_path, access_count, last_accessed)
-                    VALUES (?, ?, 1, CURRENT_TIMESTAMP)
-                    ON CONFLICT(repo_id, file_path) DO UPDATE SET
-                        access_count = access_count + 1,
-                        last_accessed = CURRENT_TIMESTAMP
-                ''', (request.repo_id, file_path))
-        
-        conn.commit()
-        conn.close()
+response_time = time.time() - start_time
+
+# Save metrics to database (non-critical)
+try:
+    conn = sqlite3.connect('metrics.db', timeout=10, check_same_thread=False)
+    conn.execute('PRAGMA journal_mode=WAL')
+    c = conn.cursor()
+    
+    c.execute('''
+        INSERT INTO query_metrics (repo_id, question, response_time, tokens_used, files_queried)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (
+        request.repo_id,
+        request.question,
+        response_time,
+        tokens_used,
+        json.dumps(request.selected_files) if request.selected_files else None
+    ))
+
+    if request.selected_files:
+        for file_path in request.selected_files:
+            c.execute('''
+                INSERT OR IGNORE INTO file_access (repo_id, file_path, access_count, last_accessed)
+                VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+            ''', (request.repo_id, file_path))
+
+    conn.commit()
+    conn.close()
+except Exception:
+    pass
         
         # ADD THIS: Simulate validation for improvement suggestions
         validation_preview = None
