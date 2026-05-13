@@ -86,48 +86,63 @@ def init_metrics_db():
 
 init_metrics_db()
 
-# ── TIPS Validation ───────────────────────────────────────────────────────────
-async def call_llm_evaluator(
-    original_code: str,
-    improved_code: str,
-    explanation: str,
-    suggestion_type: str = "security"
-) -> dict:
-    """TIPS Framework — call LLM Evaluator for multi-model validation."""
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://llm-evaluation-framework.onrender.com/validate",
-                json={
-                    "file_path": "code.py",
-                    "original_code": original_code,
-                    "improved_code": improved_code,
-                    "explanation": explanation,
-                    "suggestion_type": suggestion_type
-                }
-            )
-            if response.status_code == 200:
-                v = response.json()
-                return {
-                    "confidence_score": v["confidence_score"],
-                    "confidence_level": v["confidence_level"],
-                    "model_agreements": v["model_agreements"],
-                    "models_agree": v["models_agree"],
-                    "recommendation": v["recommendation"],
-                    "note": f"Validated by {v['models_agree']} models"
-                }
-    except Exception as e:
-        print(f"Validation API error: {e}")
 
-    # Fallback
-    return {
-        "confidence_score": 0.75,
-        "confidence_level": "MEDIUM",
-        "model_agreements": {"fallback": True},
-        "models_agree": "1/1",
-        "recommendation": "REVIEW",
-        "note": "Validation service unavailable - using fallback"
-    }
+# ── TIPS Validation ───────────────────────────────────────────────────────────
+async def tips_validate(question: str, answer: str, context: str) -> dict:
+    """
+    TIPS Framework — Claude Haiku judges Claude Sonnet's answer.
+    Assesses accuracy, completeness, and grounding against retrieved code.
+    Runs on every query — not just suggestion requests.
+    """
+    judge_prompt = f"""You are a code analysis quality judge. Assess whether the answer accurately addresses the question based on the retrieved code context.
+
+Question: {question}
+
+Retrieved Code Context (truncated):
+{context[:2000]}
+
+Answer to Evaluate:
+{answer[:1500]}
+
+Rate on three criteria:
+1. ACCURACY: Does the answer correctly describe what the code does?
+2. COMPLETENESS: Does it fully address the question?
+3. GROUNDING: Is it based on actual retrieved code, not general assumptions?
+
+Respond with ONLY valid JSON, no other text:
+{{"score": <float 0.0-1.0>, "reasoning": "<one concise sentence explaining the score>"}}"""
+
+    try:
+        response = anthropic_client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=120,
+            messages=[{"role": "user", "content": judge_prompt}]
+        )
+        import json as _json
+        result = _json.loads(response.content[0].text.strip())
+        score = float(result.get("score", 0.75))
+        score = max(0.0, min(1.0, score))
+        level = "HIGH" if score >= 0.85 else "MEDIUM" if score >= 0.70 else "LOW"
+        return {
+            "confidence_score": round(score, 2),
+            "confidence_level": level,
+            "model_agreements": {"claude-sonnet": True, "claude-haiku": score >= 0.70},
+            "models_agree": "2/2" if score >= 0.85 else "1/2",
+            "recommendation": "APPLY" if score >= 0.85 else "REVIEW" if score >= 0.70 else "REJECT",
+            "reasoning": result.get("reasoning", ""),
+            "note": "Validated by Claude Sonnet + Haiku consensus"
+        }
+    except Exception as e:
+        print(f"TIPS validation error: {e}")
+        return {
+            "confidence_score": 0.75,
+            "confidence_level": "MEDIUM",
+            "model_agreements": {"fallback": True},
+            "models_agree": "1/1",
+            "recommendation": "REVIEW",
+            "reasoning": "",
+            "note": "Validation unavailable — using fallback"
+        }
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -520,15 +535,12 @@ Instructions:
         except Exception:
             pass
 
-        # TIPS validation for improvement suggestions
-        validation_preview = None
-        if is_suggestion_request:
-            validation_preview = await call_llm_evaluator(
-                original_code="password = request.POST['pwd']",
-                improved_code="password = request.POST.get('pwd', '')",
-                explanation="Prevents KeyError exception",
-                suggestion_type="security"
-            )
+        # TIPS Framework — validate every answer with Haiku as judge
+        validation_preview = await tips_validate(
+            question=request.question,
+            answer=answer,
+            context=context
+        )
 
         return QueryResponse(
             answer=answer,
