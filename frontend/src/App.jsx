@@ -579,7 +579,9 @@ function Message({ message, rateQuery }) {
         {/* Validation Preview */}
         {!isUser && message.validation_preview && (
           <div className="mt-4 p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-            <div className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">🔬 Multi-Model Validation</div>
+            <div className="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-2">
+              🔬 TIPS Framework — Multi-Model Validation
+            </div>
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Confidence:</span>
@@ -602,16 +604,21 @@ function Message({ message, rateQuery }) {
                   </div>
                 ))}
               </div>
+              {message.validation_preview.reasoning && (
+                <div className="pt-2 border-t border-slate-700 text-xs text-slate-400 italic">
+                  {message.validation_preview.reasoning}
+                </div>
+              )}
               <div className="pt-2 border-t border-slate-700">
                 <span className={`text-xs font-semibold ${
                   message.validation_preview.recommendation === 'APPLY' ? 'text-green-400' :
                   message.validation_preview.recommendation === 'REVIEW' ? 'text-yellow-400' : 'text-red-400'
                 }`}>
-                  {message.validation_preview.recommendation === 'APPLY' ? '✅ READY TO APPLY' :
-                   message.validation_preview.recommendation === 'REVIEW' ? '⚠️ NEEDS REVIEW' : '❌ NOT RECOMMENDED'}
+                  {message.validation_preview.recommendation === 'APPLY' ? '✅ HIGH CONFIDENCE' :
+                   message.validation_preview.recommendation === 'REVIEW' ? '⚠️ NEEDS REVIEW' : '❌ LOW CONFIDENCE'}
                 </span>
               </div>
-              <div className="text-xs text-slate-500 italic mt-2">{message.validation_preview.note}</div>
+              <div className="text-xs text-slate-500 italic">{message.validation_preview.note}</div>
             </div>
           </div>
         )}
