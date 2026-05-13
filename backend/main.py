@@ -115,11 +115,17 @@ Respond with ONLY valid JSON, no other text:
     try:
         response = anthropic_client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=120,
+            max_tokens=200,
             messages=[{"role": "user", "content": judge_prompt}]
         )
-        import json as _json
-        result = _json.loads(response.content[0].text.strip())
+        import json as _json, re as _re
+        raw = response.content[0].text.strip() if response.content else ""
+        if not raw:
+            raise ValueError("Empty response from judge model")
+        # Extract JSON even if Haiku wraps it in text
+        match = _re.search(r'\{[^{}]+\}', raw, _re.DOTALL)
+        json_str = match.group() if match else raw
+        result = _json.loads(json_str)
         score = float(result.get("score", 0.75))
         score = max(0.0, min(1.0, score))
         level = "HIGH" if score >= 0.85 else "MEDIUM" if score >= 0.70 else "LOW"
